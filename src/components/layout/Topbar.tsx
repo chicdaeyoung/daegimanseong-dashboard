@@ -7,9 +7,7 @@ import { usePathname } from "next/navigation";
 const mobileNavItems: { href: string; label: string }[] = [
   { href: "/", label: "대시보드" },
   { href: "/sales/manual", label: "매출 입력" },
-  { href: "/analytics/weekly", label: "주간 분석" },
-  { href: "/analytics/monthly", label: "월간 분석" },
-  { href: "/analytics/weekday", label: "요일 분석" },
+  { href: "/analytics", label: "매출 분석" },
   { href: "/inventory", label: "재고 관리" },
 ];
 
