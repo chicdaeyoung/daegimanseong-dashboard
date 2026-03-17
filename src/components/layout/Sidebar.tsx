@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 
 const navItems: { href: string; label: string }[] = [
   { href: "/", label: "대시보드" },
-  { href: "/sales/manual", label: "매출 입력" },
-  { href: "/analytics", label: "매출 분석" },
+  { href: "/sales-input", label: "매출 입력" },
+  { href: "/recipes", label: "레시피 관리" },
   { href: "/inventory", label: "재고 관리" },
-  { href: "/sales/upload", label: "영수증 업로드" },
+  { href: "/analytics", label: "매출 분석" },
 ];
 
 export function Sidebar() {
