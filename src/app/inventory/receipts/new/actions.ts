@@ -53,7 +53,6 @@ export async function createReceiptAction(formData: FormData) {
     supplier_id,
     receipt_date,
     memo: memoStr,
-    created_by: null,
     items: validItems.map((l) => ({
       item_id: l.item_id,
       quantity: Number(l.quantity),
