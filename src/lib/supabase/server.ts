@@ -1,21 +1,26 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-export function getSupabaseServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+// 서버 컴포넌트/Server Action용 (세션 기반 RLS)
+export async function getSupabaseServerClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+  if (!url || !anonKey) return null
 
-  if (!url || !anonKey) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn(
-        "[Supabase] Missing env: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. " +
-          "Copy .env.example to .env.local and add your Supabase project values.",
-      );
-    }
-    return null;
-  }
+  const cookieStore = await cookies()
 
-  return createClient(url, anonKey, {
-    auth: { persistSession: false },
-  });
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        } catch {}
+      },
+    },
+  })
 }
-

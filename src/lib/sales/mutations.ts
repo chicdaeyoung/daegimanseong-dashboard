@@ -1,11 +1,89 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { CreateSalesEntryInput } from "./types";
 
+// -------------------------------------------------------
+// 세트메뉴 포함 재고 자동 차감
+// -------------------------------------------------------
+export async function deductInventoryForSalesLines(
+  supabase: any,
+  storeId: string,
+  salesLines: Array<{ menu_id: string; qty: number; slip_id: string }>
+) {
+  for (const line of salesLines) {
+    // 1. 메뉴 타입 확인
+    const { data: menu } = await supabase
+      .from('menu_items')
+      .select('menu_type')
+      .eq('id', line.menu_id)
+      .single()
+
+    if (!menu) continue
+
+    if (menu.menu_type === 'set') {
+      // 2a. 세트 → 구성 단품 조회 후 각 단품 레시피로 차감
+      const { data: components } = await supabase
+        .from('set_menu_components')
+        .select('component_menu_id, quantity')
+        .eq('set_menu_id', line.menu_id)
+
+      for (const comp of components ?? []) {
+        await deductByRecipe(supabase, storeId, {
+          menu_id:  comp.component_menu_id,
+          qty:      line.qty * comp.quantity,
+          slip_id:  line.slip_id,
+        })
+      }
+    } else {
+      // 2b. 단품 → 직접 레시피로 차감
+      await deductByRecipe(supabase, storeId, line)
+    }
+  }
+}
+
+async function deductByRecipe(
+  supabase: any,
+  storeId: string,
+  { menu_id, qty, slip_id }: { menu_id: string; qty: number; slip_id: string }
+) {
+  // menu_recipes 테이블에서 레시피 조회
+  const { data: recipes } = await supabase
+    .from('menu_recipes')
+    .select('item_id, quantity')
+    .eq('menu_item_id', menu_id)
+
+  for (const recipe of recipes ?? []) {
+    const deductQty = recipe.quantity * qty
+
+    // 재고 차감 (DB 함수 호출)
+    const { error } = await supabase.rpc('adjust_stock_quantity', {
+      p_item_id: recipe.item_id,
+      p_qty:     -deductQty,
+    })
+
+    if (error) {
+      // insufficient_stock 에러는 상위로 전파
+      throw new Error(error.message)
+    }
+
+    // 이동 이력 기록
+    await supabase.from('inventory_transactions').insert({
+      store_id:      storeId,
+      item_id:       recipe.item_id,
+      tx_type:       'sale_out',
+      qty_change:    -deductQty,
+      unit_cost:     0,
+      ref_type:      'sales_line',
+      ref_id:        slip_id,
+      tx_date:       new Date().toISOString(),
+    })
+  }
+}
+
 export async function createSalesEntry(
-  input: CreateSalesEntryInput,
+  input: CreateSalesEntryInput & { store_id: string },
 ): Promise<{ salesEntryId: string }> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
 
   const itemsPayload = input.items
     .filter((l) => l.menu_item_id && Number(l.quantity) > 0)
@@ -19,6 +97,7 @@ export async function createSalesEntry(
   }
 
   const { data, error } = await supabase.rpc("create_sales_entry_with_deduction", {
+    p_store_id: input.store_id,
     p_sales_date: input.sales_date,
     p_memo: input.memo || null,
     p_created_by: input.created_by || null,
@@ -26,7 +105,7 @@ export async function createSalesEntry(
   });
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("No sales entry id returned");
+  if (!data) throw new Error("매출 전표 번호를 받지 못했습니다.");
 
   return { salesEntryId: data as string };
 }
@@ -35,8 +114,8 @@ export async function cancelSalesEntry(
   salesEntryId: string,
   reason: string,
 ): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
 
   const { data: entry, error: eErr } = await supabase
     .from("sales_entries")

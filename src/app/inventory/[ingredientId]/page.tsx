@@ -40,7 +40,7 @@ export default async function InventoryIngredientDetailPage({
   const { ingredientId } = await params;
 
   const ingredient = ingredients.find((i) => i.id === ingredientId);
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   if (!ingredient) {
     return (

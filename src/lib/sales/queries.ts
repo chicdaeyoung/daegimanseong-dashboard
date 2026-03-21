@@ -2,7 +2,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { SalesEntryWithItems } from "./types";
 
 export async function getSalesEntryList(): Promise<SalesEntryWithItems[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data: entries, error: eErr } = await supabase
@@ -37,7 +37,7 @@ export async function getSalesEntryList(): Promise<SalesEntryWithItems[]> {
 export async function getSalesEntryDetail(
   entryId: string,
 ): Promise<SalesEntryWithItems | null> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return null;
 
   const { data: entry, error: eErr } = await supabase

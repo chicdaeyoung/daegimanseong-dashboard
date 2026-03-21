@@ -41,12 +41,22 @@ export default async function ReceiptDetailPage({
                       : receipt.status}
                 </p>
               </div>
-              <Link
-                href="/inventory/receipts"
-                className="text-sm font-medium text-emerald-400 hover:text-emerald-300"
-              >
-                ← 입고 목록
-              </Link>
+              <div className="flex items-center gap-3">
+                {!isCancelled && (
+                  <Link
+                    href={`/inventory/receipts/${id}/edit`}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200"
+                  >
+                    수정
+                  </Link>
+                )}
+                <Link
+                  href="/inventory/receipts"
+                  className="text-sm font-medium text-emerald-400 hover:text-emerald-300"
+                >
+                  ← 입고 목록
+                </Link>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

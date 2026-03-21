@@ -1,8 +1,9 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { MenuItem, MenuRecipeWithItem } from "./types";
 
 export async function getMenuItemsList(): Promise<MenuItem[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
@@ -15,22 +16,25 @@ export async function getMenuItemsList(): Promise<MenuItem[]> {
 }
 
 export async function getMenuItemsForSales(): Promise<MenuItem[]> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return [];
-
+  const supabase = getSupabaseAdminClient()
+  if (!supabase) {
+    console.log('[getMenuItemsForSales] adminClient is null')
+    return []
+  }
   const { data, error } = await supabase
-    .from("menu_items")
-    .select("*")
-    .eq("is_active", true)
-    .order("name", { ascending: true });
+    .from('menu_items')
+    .select('*')
+    .eq('is_active', true)
+    .order('name', { ascending: true })
 
-  if (error) return [];
-  return (data ?? []) as MenuItem[];
+  console.log('[getMenuItemsForSales] data:', data?.length, 'error:', error?.message, error?.code)
+  if (error) return []
+  return (data ?? []) as MenuItem[]
 }
 
 /** Only menu items that have at least one recipe (for sales deduction) */
 export async function getMenuItemsWithRecipesForSales(): Promise<MenuItem[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data: menuIds } = await supabase
@@ -54,7 +58,7 @@ export async function getMenuItemsWithRecipesForSales(): Promise<MenuItem[]> {
 export async function getMenuItemsWithRecipeCount(): Promise<
   (MenuItem & { recipe_count: number })[]
 > {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data: menus, error: mErr } = await supabase
@@ -84,7 +88,7 @@ export async function getRecipeDetail(menuItemId: string): Promise<{
   menu: MenuItem | null;
   recipes: MenuRecipeWithItem[];
 }> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return { menu: null, recipes: [] };
 
   const { data: menu, error: mErr } = await supabase

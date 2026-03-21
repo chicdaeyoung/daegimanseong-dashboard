@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   DashboardItem,
   Item,
@@ -8,7 +9,7 @@ import type {
 } from "./types";
 
 export async function getSuppliers(): Promise<Supplier[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
@@ -22,7 +23,7 @@ export async function getSuppliers(): Promise<Supplier[]> {
 }
 
 export async function getSuppliersList(): Promise<Supplier[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
@@ -35,7 +36,7 @@ export async function getSuppliersList(): Promise<Supplier[]> {
 }
 
 export async function getItemsForInventory(): Promise<Item[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
@@ -49,7 +50,7 @@ export async function getItemsForInventory(): Promise<Item[]> {
 }
 
 export async function getItemsList(): Promise<Item[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
@@ -62,7 +63,7 @@ export async function getItemsList(): Promise<Item[]> {
 }
 
 export async function getReceiptList(): Promise<ReceiptWithSupplier[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data: receipts, error: rErr } = await supabase
@@ -81,7 +82,7 @@ export async function getReceiptList(): Promise<ReceiptWithSupplier[]> {
 export async function getReceiptDetail(
   receiptId: string,
 ): Promise<ReceiptDetail | null> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return null;
 
   const { data: receipt, error: rErr } = await supabase
@@ -112,7 +113,7 @@ export async function getReceiptDetail(
 }
 
 export async function getInventoryDashboardItems(): Promise<DashboardItem[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
 
   const { data: items, error: itemsErr } = await supabase
@@ -150,4 +151,22 @@ export async function getInventoryDashboardItems(): Promise<DashboardItem[]> {
       stock_amount: current_qty * avg_unit_cost,
     } as DashboardItem;
   });
+}
+
+export async function getStockAlerts() {
+  const supabase = getSupabaseAdminClient()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('inventory_stock_alerts')
+    .select('*')
+    .in('alert_level', ['critical', 'warning'])
+    .order('alert_level', { ascending: true })
+    .order('current_qty', { ascending: true })
+
+  if (error) {
+    console.log('[getStockAlerts] error:', error.message)
+    return []
+  }
+  return data ?? []
 }

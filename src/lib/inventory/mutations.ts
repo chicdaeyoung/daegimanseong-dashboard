@@ -1,15 +1,16 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { CreateReceiptInput, Item, Supplier } from "./types";
 import { formatReceiptNo } from "./utils";
 
 export type CreateReceiptResult = { receiptId: string; receiptNo: string };
 
 export async function createReceipt(
-  input: CreateReceiptInput,
+  input: CreateReceiptInput & { store_id: string },
 ): Promise<CreateReceiptResult> {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseAdminClient();
   if (!supabase) {
-    throw new Error("Supabase is not configured");
+    throw new Error("서버 연결에 실패했습니다.");
   }
 
   const receiptNo = formatReceiptNo();
@@ -34,6 +35,7 @@ export async function createReceipt(
   });
 
   const { data, error } = await supabase.rpc("create_inventory_receipt", {
+    p_store_id: input.store_id,
     p_receipt_no: receiptNo,
     p_supplier_id: input.supplier_id || null,
     p_receipt_date: input.receipt_date,
@@ -43,11 +45,11 @@ export async function createReceipt(
   });
 
   if (error) {
-    throw new Error(error.message || "Failed to create receipt");
+    throw new Error(error.message || "입고 등록에 실패했습니다.");
   }
 
   if (!data) {
-    throw new Error("No receipt id returned");
+    throw new Error("입고 전표 번호를 받지 못했습니다.");
   }
 
   return { receiptId: data as string, receiptNo };
@@ -66,14 +68,15 @@ export type CreateSupplierInput = {
 };
 
 export async function createSupplier(
-  input: CreateSupplierInput,
+  input: CreateSupplierInput & { store_id: string },
 ): Promise<Supplier> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
 
   const { data, error } = await supabase
     .from("suppliers")
     .insert({
+      store_id: input.store_id,
       name: input.name,
       code: input.code || null,
       contact_name: input.contact_name || null,
@@ -99,13 +102,14 @@ export type CreateItemInput = {
   memo?: string | null;
 };
 
-export async function createItem(input: CreateItemInput): Promise<Item> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+export async function createItem(input: CreateItemInput & { store_id: string }): Promise<Item> {
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
 
   const { data, error } = await supabase
     .from("items")
     .insert({
+      store_id: input.store_id,
       name: input.name,
       code: input.code || null,
       base_unit: input.base_unit || "ea",
@@ -121,8 +125,8 @@ export async function createItem(input: CreateItemInput): Promise<Item> {
 }
 
 export async function deactivateItem(itemId: string): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
   const { error } = await supabase
     .from("items")
     .update({ is_active: false })
@@ -131,8 +135,8 @@ export async function deactivateItem(itemId: string): Promise<void> {
 }
 
 export async function deactivateSupplier(supplierId: string): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
   const { error } = await supabase
     .from("suppliers")
     .update({ is_active: false })
@@ -140,9 +144,51 @@ export async function deactivateSupplier(supplierId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function deleteItem(itemId: string): Promise<void> {
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
+
+  const { count } = await supabase
+    .from("inventory_receipt_items")
+    .select("id", { count: "exact", head: true })
+    .eq("item_id", itemId);
+
+  if (count && count > 0) {
+    throw new Error("입고 이력이 있는 품목은 삭제할 수 없습니다. (비활성화 상태로 유지하세요)");
+  }
+
+  const { error } = await supabase
+    .from("items")
+    .delete()
+    .eq("id", itemId)
+    .eq("is_active", false);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteSupplier(supplierId: string): Promise<void> {
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
+
+  const { count } = await supabase
+    .from("inventory_receipts")
+    .select("id", { count: "exact", head: true })
+    .eq("supplier_id", supplierId);
+
+  if (count && count > 0) {
+    throw new Error("입고 이력이 있는 거래처는 삭제할 수 없습니다. (비활성화 상태로 유지하세요)");
+  }
+
+  const { error } = await supabase
+    .from("suppliers")
+    .delete()
+    .eq("id", supplierId)
+    .eq("is_active", false);
+  if (error) throw new Error(error.message);
+}
+
 export async function cancelReceipt(receiptId: string, reason: string): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
 
   const { data: receipt, error: rErr } = await supabase
     .from("inventory_receipts")

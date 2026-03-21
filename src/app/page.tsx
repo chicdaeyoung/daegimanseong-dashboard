@@ -1,6 +1,3 @@
-"use client";
-
-import { useMemo } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { KpiCard } from "@/components/ui/KpiCard";
@@ -22,6 +19,7 @@ import {
   expandSetMenus,
   sumMenuQuantities,
 } from "@/lib/calculations";
+import { getStockAlerts } from "@/lib/inventory/queries";
 
 function formatCurrency(value: number) {
   return value.toLocaleString("ko-KR", {
@@ -31,7 +29,7 @@ function formatCurrency(value: number) {
   });
 }
 
-export default function Home() {
+export default async function Home() {
   const today = todaySales[0];
   const foodCostRatio =
     today && today.totalAmount > 0
@@ -57,36 +55,34 @@ export default function Home() {
   );
   const alerts = detectLowStock(afterInventory, ingredients);
 
-  /** Top 5 items needing attention: low stock first, then near threshold (within 120%). */
-  const attentionItems = useMemo(() => {
-    const withRatio = afterInventory
-      .map((inv) => {
-        const ing = ingredients.find((i) => i.id === inv.ingredientId);
-        if (!ing) return null;
-        const ratio =
-          ing.lowStockThreshold > 0
-            ? inv.quantity / ing.lowStockThreshold
-            : 1;
-        return {
-          ing,
-          remaining: inv.quantity,
-          threshold: ing.lowStockThreshold,
-          ratio,
-          isLow: inv.quantity <= ing.lowStockThreshold,
-        };
-      })
-      .filter(Boolean) as {
-      ing: Ingredient;
-      remaining: number;
-      threshold: number;
-      ratio: number;
-      isLow: boolean;
-    }[];
-    return withRatio
-      .filter((x) => x.ratio <= 1.2)
-      .sort((a, b) => a.ratio - b.ratio)
-      .slice(0, 5);
-  }, [afterInventory, ingredients]);
+  const withRatio = afterInventory
+    .map((inv) => {
+      const ing = ingredients.find((i) => i.id === inv.ingredientId);
+      if (!ing) return null;
+      const ratio =
+        ing.lowStockThreshold > 0
+          ? inv.quantity / ing.lowStockThreshold
+          : 1;
+      return {
+        ing,
+        remaining: inv.quantity,
+        threshold: ing.lowStockThreshold,
+        ratio,
+        isLow: inv.quantity <= ing.lowStockThreshold,
+      };
+    })
+    .filter(Boolean) as {
+    ing: Ingredient;
+    remaining: number;
+    threshold: number;
+    ratio: number;
+    isLow: boolean;
+  }[];
+
+  const attentionItems = withRatio
+    .filter((x) => x.ratio <= 1.2)
+    .sort((a, b) => a.ratio - b.ratio)
+    .slice(0, 5);
 
   const bestMenus = [...menuQty.entries()]
     .map(([menuId, qty]) => ({
@@ -95,6 +91,8 @@ export default function Home() {
     }))
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 5);
+
+  const stockAlerts = await getStockAlerts();
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-50">
@@ -154,6 +152,47 @@ export default function Home() {
                 pill="Food Cost %"
               />
             </section>
+
+            {stockAlerts.length > 0 && (
+              <SectionCard
+                title="재고 경고"
+                description="부족하거나 소진 임박한 품목입니다."
+              >
+                <div className="space-y-2">
+                  {stockAlerts.map((alert: any) => (
+                    <div
+                      key={alert.item_id}
+                      className={`flex items-center justify-between rounded-lg px-4 py-2 ${
+                        alert.alert_level === "critical"
+                          ? "bg-red-950/50 text-red-200"
+                          : "bg-amber-950/50 text-amber-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs font-bold ${
+                            alert.alert_level === "critical"
+                              ? "text-red-400"
+                              : "text-amber-400"
+                          }`}
+                        >
+                          {alert.alert_level === "critical" ? "소진" : "주의"}
+                        </span>
+                        <span className="text-sm font-medium">{alert.item_name}</span>
+                      </div>
+                      <div className="text-right text-xs">
+                        <span className="font-mono">
+                          {alert.current_qty}{alert.base_unit}
+                        </span>
+                        <span className="ml-2 text-slate-400">
+                          / 기준 {Math.ceil(alert.threshold_qty)}{alert.base_unit}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <div className="space-y-4 lg:col-span-2">

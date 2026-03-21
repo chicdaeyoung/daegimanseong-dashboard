@@ -1,13 +1,15 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { CreateRecipeInput, MenuItem } from "./types";
 
-export async function createRecipe(input: CreateRecipeInput): Promise<MenuItem> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+export async function createRecipe(input: CreateRecipeInput & { store_id: string }): Promise<MenuItem> {
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
 
   const { data: menu, error: menuErr } = await supabase
     .from("menu_items")
     .insert({
+      store_id: input.store_id,
       name: input.name,
       code: input.code || null,
       category: input.category || null,
@@ -39,8 +41,8 @@ export async function createRecipe(input: CreateRecipeInput): Promise<MenuItem> 
 }
 
 export async function deactivateMenu(menuItemId: string): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
   const { error } = await supabase
     .from("menu_items")
     .update({ is_active: false })
@@ -49,8 +51,8 @@ export async function deactivateMenu(menuItemId: string): Promise<void> {
 }
 
 export async function deleteRecipeLine(recipeLineId: string): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is not configured");
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new Error("서버 연결에 실패했습니다.");
   const { error } = await supabase
     .from("menu_recipes")
     .delete()

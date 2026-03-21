@@ -37,6 +37,12 @@ export default async function RecipesPage() {
                 >
                   레시피 등록
                 </Link>
+                <a
+                  href="/recipes/set/new"
+                  className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"
+                >
+                  세트메뉴 등록
+                </a>
               </div>
             </div>
 

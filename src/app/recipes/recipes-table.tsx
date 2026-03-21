@@ -42,6 +42,9 @@ export function RecipesTable({ menus }: Props) {
               <tr key={m.id} className="hover:bg-slate-800/30">
                 <td className="py-3 pr-4 font-medium text-slate-100">
                   {m.name}
+                  {(m as any).menu_type === 'set' && (
+                    <span className="ml-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">세트</span>
+                  )}
                 </td>
                 <td className="py-3 pr-4 text-slate-300">{m.code ?? "-"}</td>
                 <td className="py-3 pr-4 text-slate-300">

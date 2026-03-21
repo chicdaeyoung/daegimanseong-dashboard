@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Supplier } from "@/lib/inventory/types";
-import { supplierDeactivateAction } from "./actions";
+import { supplierDeactivateAction, supplierDeleteAction } from "./actions";
 
 type Props = { suppliers: Supplier[] };
 
@@ -18,6 +18,15 @@ export function SuppliersTable({ suppliers }: Props) {
     if (result?.error) setError(result.error);
   }
 
+  async function handleDelete(supplierId: string, supplierName: string) {
+    if (!confirm(`"${supplierName}"을(를) 완전히 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+    setError(null);
+    setPendingId(supplierId);
+    const result = await supplierDeleteAction(supplierId);
+    setPendingId(null);
+    if (result?.error) setError(result.error);
+  }
+
   return (
     <>
       <div className="overflow-x-auto">
@@ -29,7 +38,7 @@ export function SuppliersTable({ suppliers }: Props) {
               <th className="pb-3 pr-4">연락처</th>
               <th className="pb-3 pr-4">사업자번호</th>
               <th className="pb-3 pr-4">사용</th>
-              <th className="pb-3 w-24">작업</th>
+              <th className="pb-3 w-32">작업</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
@@ -56,17 +65,24 @@ export function SuppliersTable({ suppliers }: Props) {
                     {s.is_active ? "사용" : "미사용"}
                   </span>
                 </td>
-                <td className="py-3">
+                <td className="py-3 flex gap-1">
                   {s.is_active && (
-                    <form action={() => handleDeactivate(s.id)}>
-                      <button
-                        type="submit"
-                        disabled={pendingId === s.id}
-                        className="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-300 hover:bg-amber-500/30 disabled:opacity-50"
-                      >
-                        {pendingId === s.id ? "처리 중…" : "비활성화"}
-                      </button>
-                    </form>
+                    <button
+                      onClick={() => handleDeactivate(s.id)}
+                      disabled={pendingId === s.id}
+                      className="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-300 hover:bg-amber-500/30 disabled:opacity-50"
+                    >
+                      {pendingId === s.id ? "처리 중…" : "비활성화"}
+                    </button>
+                  )}
+                  {!s.is_active && (
+                    <button
+                      onClick={() => handleDelete(s.id, s.name)}
+                      disabled={pendingId === s.id}
+                      className="rounded bg-red-500/20 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/30 disabled:opacity-50"
+                    >
+                      {pendingId === s.id ? "처리 중…" : "삭제"}
+                    </button>
                   )}
                 </td>
               </tr>

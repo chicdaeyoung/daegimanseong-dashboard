@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Item } from "@/lib/inventory/types";
-import { itemDeactivateAction } from "./actions";
+import { itemDeactivateAction, itemDeleteAction } from "./actions";
 
 type Props = { items: Item[] };
 
@@ -18,6 +18,15 @@ export function ItemsTable({ items }: Props) {
     if (result?.error) setError(result.error);
   }
 
+  async function handleDelete(itemId: string, itemName: string) {
+    if (!confirm(`"${itemName}"을(를) 완전히 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+    setError(null);
+    setPendingId(itemId);
+    const result = await itemDeleteAction(itemId);
+    setPendingId(null);
+    if (result?.error) setError(result.error);
+  }
+
   return (
     <>
       <div className="overflow-x-auto">
@@ -29,7 +38,7 @@ export function ItemsTable({ items }: Props) {
               <th className="pb-3 pr-4">기본 단위</th>
               <th className="pb-3 pr-4">규격</th>
               <th className="pb-3 pr-4">사용</th>
-              <th className="pb-3 w-24">작업</th>
+              <th className="pb-3 w-32">작업</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
@@ -52,17 +61,24 @@ export function ItemsTable({ items }: Props) {
                     {item.is_active ? "사용" : "미사용"}
                   </span>
                 </td>
-                <td className="py-3">
+                <td className="py-3 flex gap-1">
                   {item.is_active && (
-                    <form action={() => handleDeactivate(item.id)}>
-                      <button
-                        type="submit"
-                        disabled={pendingId === item.id}
-                        className="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-300 hover:bg-amber-500/30 disabled:opacity-50"
-                      >
-                        {pendingId === item.id ? "처리 중…" : "비활성화"}
-                      </button>
-                    </form>
+                    <button
+                      onClick={() => handleDeactivate(item.id)}
+                      disabled={pendingId === item.id}
+                      className="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-300 hover:bg-amber-500/30 disabled:opacity-50"
+                    >
+                      {pendingId === item.id ? "처리 중…" : "비활성화"}
+                    </button>
+                  )}
+                  {!item.is_active && (
+                    <button
+                      onClick={() => handleDelete(item.id, item.name)}
+                      disabled={pendingId === item.id}
+                      className="rounded bg-red-500/20 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/30 disabled:opacity-50"
+                    >
+                      {pendingId === item.id ? "처리 중…" : "삭제"}
+                    </button>
                   )}
                 </td>
               </tr>

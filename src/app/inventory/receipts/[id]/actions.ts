@@ -3,22 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { cancelReceipt } from "@/lib/inventory/mutations";
 
-function verifyAdminPassword(password: string): boolean {
-  const expected = process.env.ADMIN_OVERRIDE_PASSWORD;
-  if (!expected) return false;
-  return password.trim() === expected;
-}
-
-export async function cancelReceiptAction(
-  receiptId: string,
-  password: string,
-  reason: string,
-) {
+export async function cancelReceiptAction(receiptId: string, reason: string) {
   if (!receiptId) return { error: "전표가 없습니다." };
   if (!reason?.trim()) return { error: "취소 사유를 입력해 주세요." };
-  if (!verifyAdminPassword(password)) {
-    return { error: "관리자 비밀번호가 일치하지 않습니다." };
-  }
 
   try {
     await cancelReceipt(receiptId, reason.trim());

@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
-import { getMenuItemsWithRecipesForSales } from "@/lib/recipes/queries";
+import { getMenuItemsForSales } from "@/lib/recipes/queries";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { SalesEntryForm } from "./sales-entry-form";
 
 export default async function NewSalesEntryPage() {
-  const menuItems = await getMenuItemsWithRecipesForSales();
+  // 디버그
+  const adminClient = getSupabaseAdminClient();
+  console.log('adminClient:', adminClient ? 'OK' : 'NULL');
+  console.log('SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+  console.log('SERVICE_ROLE_KEY length:', process.env.SUPABASE_SERVICE_ROLE_KEY?.length);
+
+  const menuItems = await getMenuItemsForSales();
+  console.log('menuItems count:', menuItems.length);
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-50">
