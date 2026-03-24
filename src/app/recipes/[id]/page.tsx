@@ -5,6 +5,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { getRecipeDetail } from "@/lib/recipes/queries";
 import { formatCurrency } from "@/lib/inventory/utils";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { RecipeLinesTable } from "./recipe-lines-table";
 
 export default async function RecipeDetailPage({
@@ -13,8 +14,36 @@ export default async function RecipeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { menu, recipes } = await getRecipeDetail(id);
+
+  const supabase = await getSupabaseServerClient();
+  const [{ menu, recipes }, itemsResult] = await Promise.all([
+    getRecipeDetail(id),
+    supabase
+      ? supabase
+          .from("items")
+          .select("id, name, base_unit, purchase_unit, unit_conversion")
+          .eq("is_active", true)
+          .order("name")
+      : Promise.resolve({ data: [] }),
+  ]);
+
   if (!menu) notFound();
+
+  const availableItems = (itemsResult?.data ?? []).map(
+    (item: {
+      id: string;
+      name: string;
+      base_unit: string;
+      purchase_unit: string | null;
+      unit_conversion: number | null;
+    }) => ({
+      id: item.id,
+      name: item.name,
+      base_unit: item.base_unit,
+      purchase_unit: item.purchase_unit ?? item.base_unit,
+      unit_conversion: item.unit_conversion ?? 1,
+    }),
+  );
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-50">
@@ -42,15 +71,13 @@ export default async function RecipeDetailPage({
 
             <SectionCard
               title="레시피 품목"
-              description="품목, 사용량, 단위. 삭제 시 해당 라인만 제거됩니다(메뉴는 유지)."
+              description="품목, 사용량, 단위. 수정/삭제는 해당 라인에서 처리합니다."
             >
-              {recipes.length === 0 ? (
-                <p className="py-4 text-center text-sm text-slate-500">
-                  등록된 레시피 라인이 없습니다.
-                </p>
-              ) : (
-                <RecipeLinesTable recipes={recipes} />
-              )}
+              <RecipeLinesTable
+                recipes={recipes}
+                menuItemId={id}
+                availableItems={availableItems}
+              />
             </SectionCard>
           </div>
         </main>

@@ -18,6 +18,7 @@ export type MenuRecipe = {
   item_id: string;
   quantity: number;
   unit: string;
+  unit_conversion: number;
   memo: string | null;
   created_at: string;
 };

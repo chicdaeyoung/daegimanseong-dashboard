@@ -24,15 +24,38 @@ export async function createItemAction(formData: FormData) {
 
   if (!storeUser) return { error: '점포 정보를 찾을 수 없습니다.' }
 
-  const base_unit = formData.get('base_unit')
-  const unit = base_unit && typeof base_unit === 'string' ? base_unit : 'ea'
+  function getBaseUnit(purchaseUnit: string): string {
+    if (['kg', 'g', '봉지'].includes(purchaseUnit)) return 'g'
+    if (['L', 'ml', '통'].includes(purchaseUnit)) return 'ml'
+    return '개' // 개, 박스
+  }
+
+  function getAutoConversion(purchaseUnit: string): number | null {
+    if (purchaseUnit === 'kg' || purchaseUnit === 'L') return 1000
+    if (purchaseUnit === 'g' || purchaseUnit === 'ml') return 1
+    return null // 개, 봉지, 박스, 통: 직접 입력
+  }
+
+  const purchaseUnit = String(formData.get('purchase_unit') || 'kg')
+  const base_unit = getBaseUnit(purchaseUnit)
+  const autoConversion = getAutoConversion(purchaseUnit)
+  const unitConversionRaw = formData.get('unit_conversion')
+  const unit_conversion = autoConversion !== null
+    ? autoConversion
+    : unitConversionRaw ? Number(unitConversionRaw) : 1
+
+  if (isNaN(unit_conversion) || unit_conversion <= 0) {
+    return { error: '변환계수는 양수여야 합니다.' }
+  }
 
   try {
     await createItem({
       store_id: storeUser.store_id,
       name: name.trim(),
       code: formData.get('code') ? String(formData.get('code')).trim() || null : null,
-      base_unit: unit,
+      base_unit,
+      purchase_unit: purchaseUnit,
+      unit_conversion,
       spec: formData.get('spec') ? String(formData.get('spec')).trim() || null : null,
       memo: formData.get('memo') ? String(formData.get('memo')).trim() || null : null,
     })

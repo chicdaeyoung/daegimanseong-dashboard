@@ -19,6 +19,8 @@ export type Item = {
   code: string | null;
   category: string | null;
   base_unit: string;
+  purchase_unit?: string;
+  unit_conversion?: number;
   spec: string | null;
   is_active: boolean;
   memo: string | null;

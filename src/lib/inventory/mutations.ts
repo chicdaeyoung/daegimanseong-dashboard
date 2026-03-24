@@ -98,6 +98,8 @@ export type CreateItemInput = {
   name: string;
   code?: string | null;
   base_unit: string;
+  purchase_unit: string;
+  unit_conversion: number;
   spec?: string | null;
   memo?: string | null;
 };
@@ -112,7 +114,9 @@ export async function createItem(input: CreateItemInput & { store_id: string }):
       store_id: input.store_id,
       name: input.name,
       code: input.code || null,
-      base_unit: input.base_unit || "ea",
+      base_unit: input.base_unit,
+      purchase_unit: input.purchase_unit,
+      unit_conversion: input.unit_conversion,
       spec: input.spec || null,
       memo: input.memo || null,
       is_active: true,

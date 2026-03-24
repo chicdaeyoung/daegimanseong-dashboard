@@ -153,6 +153,37 @@ export async function getInventoryDashboardItems(): Promise<DashboardItem[]> {
   });
 }
 
+export async function getItemReceiptHistory(itemId: string) {
+  const supabase = getSupabaseAdminClient()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('inventory_receipt_items')
+    .select(`
+      id,
+      quantity,
+      unit,
+      unit_price,
+      supply_amount,
+      vat_amount,
+      total_amount,
+      created_at,
+      receipt:inventory_receipts(
+        id,
+        receipt_no,
+        receipt_date,
+        status,
+        supplier:suppliers(name)
+      )
+    `)
+    .eq('item_id', itemId)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (error) return []
+  return data ?? []
+}
+
 export async function getStockAlerts() {
   const supabase = getSupabaseAdminClient()
   if (!supabase) return []
